@@ -9,3 +9,7 @@ workers_dev = false
 # Private service-binding target. Do not add a public route unless an internal auth layer is added.
 [placement]
 region = "gcp:us-west1"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
