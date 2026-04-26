@@ -1,0 +1,11 @@
+name = "noruct-chat-openai-executor"
+main = "src/executor.ts"
+compatibility_date = "2025-04-01"
+workers_dev = false
+
+# Private Chat executor for Gate service binding (no public routes).
+#   npx wrangler deploy
+#   npx wrangler secret put OPENAI_API_KEY
+
+[placement]
+region = "gcp:us-west1"
