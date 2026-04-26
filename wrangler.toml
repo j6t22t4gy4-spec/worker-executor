@@ -1,11 +1,11 @@
+# Git push (OpenAI Executor Worker): https://github.com/j6t22t4gy4-spec/worker-executor
+# This path under nonopro is an Executor dev copy; sync this directory to worker-executor before release.
+
 name = "noruct-chat-openai-executor"
 main = "src/executor.ts"
 compatibility_date = "2025-04-01"
 workers_dev = false
 
-# Private Chat executor for Gate service binding (no public routes).
-#   npx wrangler deploy
-#   npx wrangler secret put OPENAI_API_KEY
-
+# Private service-binding target. Do not add a public route unless an internal auth layer is added.
 [placement]
 region = "gcp:us-west1"
