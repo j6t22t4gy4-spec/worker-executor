@@ -1,7 +1,7 @@
 # Git push (OpenAI Executor Worker): https://github.com/j6t22t4gy4-spec/worker-executor
 # This path under nonopro is an Executor dev copy; sync this directory to worker-executor before release.
 
-name = "noruct-chat-openai-executor"
+name = "worker-executor"
 main = "src/executor.ts"
 compatibility_date = "2025-04-01"
 workers_dev = false
