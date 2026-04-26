@@ -1,5 +1,5 @@
 {
-  "name": "noruct-chat-openai-executor",
+  "name": "worker-executor",
   "private": true,
   "type": "module",
   "repository": {
