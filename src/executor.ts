@@ -5,21 +5,21 @@ type Env = {
 const RESPONSES_API_URL = "https://api.openai.com/v1/responses";
 const OPENAI_RETRYABLE_STATUS = new Set([408, 409, 429, 500, 502, 503, 504]);
 
-function jsonError(message: string, status: number): Response {
-  return new Response(JSON.stringify({ error: message }), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function textResponse(message: string, status: number): Response {
+  return new Response(message, {
+    status,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
 
 async function callResponsesApi(
   payload: Record<string, unknown>,
   apiKey: string,
-  maxRetries = 1,
+  maxRetries: number,
 ): Promise<Response> {
   let lastError: Error | null = null;
 
@@ -34,62 +34,58 @@ async function callResponsesApi(
         body: JSON.stringify(payload),
       });
 
-      if (OPENAI_RETRYABLE_STATUS.has(response.status)) {
-        const errorText = await response.text();
-        if (attempt === maxRetries) {
-          throw new Error(`OpenAI API ${response.status}: ${errorText}`);
-        }
+      if (OPENAI_RETRYABLE_STATUS.has(response.status) && attempt < maxRetries) {
         const delay = Math.min(300 * Math.pow(2, attempt) + Math.random() * 200, 1500);
         await sleep(delay);
         continue;
       }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`OpenAI API ${response.status}: ${errorText}`);
-      }
-
       return response;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      if (attempt === maxRetries) break;
-      await sleep(250);
+      if (attempt < maxRetries) {
+        const delay = Math.min(300 * Math.pow(2, attempt) + Math.random() * 200, 1500);
+        await sleep(delay);
+        continue;
+      }
     }
   }
 
-  throw lastError ?? new Error("OpenAI 호출 실패");
+  throw lastError ?? new Error("OpenAI API request failed");
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method !== "POST") {
-      return jsonError("Method Not Allowed", 405);
+      return textResponse("Method not allowed", 405);
     }
 
     const apiKey = env.OPENAI_API_KEY?.trim();
     if (!apiKey) {
-      return jsonError("OPENAI_API_KEY missing", 500);
+      return textResponse("OPENAI_API_KEY missing", 500);
     }
 
     let body: { payload?: unknown; maxRetries?: unknown };
     try {
       body = (await request.json()) as { payload?: unknown; maxRetries?: unknown };
     } catch {
-      return jsonError("invalid_json", 400);
+      return textResponse("Invalid JSON", 400);
     }
 
     if (!body.payload || typeof body.payload !== "object" || Array.isArray(body.payload)) {
-      return jsonError("invalid_payload", 400);
+      return textResponse("Invalid payload", 400);
     }
 
+    const maxRetries =
+      typeof body.maxRetries === "number" && Number.isFinite(body.maxRetries)
+        ? Math.max(0, Math.min(4, Math.floor(body.maxRetries)))
+        : 1;
+
     try {
-      return await callResponsesApi(
-        body.payload as Record<string, unknown>,
-        apiKey,
-        typeof body.maxRetries === "number" ? body.maxRetries : 1,
-      );
+      return await callResponsesApi(body.payload as Record<string, unknown>, apiKey, maxRetries);
     } catch (error) {
-      return jsonError(error instanceof Error ? error.message : String(error), 502);
+      const message = error instanceof Error ? error.message : String(error);
+      return textResponse(message, 502);
     }
   },
 };
